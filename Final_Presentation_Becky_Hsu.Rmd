@@ -1,0 +1,662 @@
+---
+title: "Final_Presentation_McDonald_Menu_Nutrition"
+author: "Becky Hsu"
+date: "2023-08-10"
+output:
+  slidy_presentation: default
+  ioslides_presentation: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(scales)
+```
+
+## Overview of McDonald menu's nutrition Analysis
+
+Data set obtained from the Télécom ParisTech's website:
+Link:https://perso.telecom-paristech.fr/eagan/class/igr204/datasets
+
+There is a total of 260 food items categorized in 9 categories: "Beef & Pork", "Beverages", "Breakfast", "Chicken & Fish", "Coffee & Tea", "Desserts", "Salads", "Smoothies & Shakes", "Snacks & Sides"
+
+There are a total of 21 nutrition ingredients recorded in the data set that results to be contained in each of the food item.
+
+### Interesting facts:
+-Adults should consume between 20 and 35 grams of dietary fiber per day.
+
+-The recommended daily intake (RDI) for calories is 2200 for women and 2900 for men.
+
+-Calories come in three food components. There are 9 calories per gram of fat, and 4 calories per gram of carbohydrate and protein.
+
+-Overall, in your diet, no more than 10% of your calories should be consumed from simple carbohydrates (sugars), and no more than 30% should come from fat. The RDI of protein is 50 grams for women and 63 grams for men. The balance of calories should be consumed in the form of complex carbohydrates (starches).
+
+Link: http://lib.stat.cmu.edu/datasets/1993.expo/
+
+### Side note:
+1.The World Health Organization, the Centers for Disease Control and Prevention, and American Heart Association all recommend keeping sodium under 2,300 milligrams (mg) per day. The Institute of Medicine (IOM) suggests aiming for about 1,500 mg per day.
+
+Link:https://www.medicalnewstoday.com/articles/324847#short-term-impacts
+
+## Background
+
+Fast-food chains have become an integral part of the global food industry. With the rising demand for convenient and quick meals, it's important to understand the nutritional aspects of these menu offerings.
+
+Fast food tends to be high in salt, sugar, saturated fats, trans fats, calories, and processed preservatives and ingredients. A wealth of well-conducted research has proven the negative health effects of consuming too much of these food components.
+
+In this report, we analyze a data set containing nutritional information from a popular fast-food franchise, McDonald, to gain insights into the nutritional content of their menu items.
+
+### Hypothesis:
+
+1.Hypothesis: There is a positive correlation between the total fat content and the calorie count of menu items.
+
+2.Hypothesis: The average protein content in the "Salads" category is higher than the average protein content in the "Breakfast" category.
+
+3.Hypothesis: The average dietary fiber content in the "Snacks & Sides" category is higher than the average dietary fiber content in the "Chicken & Fish" category.
+
+4.Hypothesis: There is a negative correlation between the amount of trans fat and the amount of protein in menu items.
+
+5.Hypothesis: Menu items with higher calorie content have a higher percentage of calories from fat.
+
+6.Hypothesis: There is no significant difference in the average carbohydrate content between the "Breakfast" and "Chicken & Fish" categories.
+
+***
+
+## Data Exploration
+
+We begin by importing the data set and exploring its characteristics:
+
+### Import Data from CSV file
+
+```{r}
+# Load the dataset
+fast_food_data <- read.csv("/Users/hsupeiyin/Downloads/menu.csv", stringsAsFactors = FALSE, header = TRUE)
+
+```
+
+
+### Summary display of the datatset
+
+```{r}
+# Display the first few rows of the dataset
+head(fast_food_data)
+```
+***
+
+### Cleaning and Oganizing the Data
+The data required factorization and relabeling for clarity:
+
+1.Remove non-numeric characters from specified columns
+
+2.Rename columns for better clarity
+
+3.Replace Column names that included "_" with "."
+
+```{r}
+# Remove non-numeric characters from specified columns
+fast_food_data <- fast_food_data %>%
+  mutate_at(vars(matches("Calories|Fat|Sodium|Carbohydrates|Dietary.Fiber|Sugars|Protein|Vitamin|Calcium|Iron")),
+            ~as.numeric(gsub("[^0-9.]", "", .))) %>%
+  mutate(Serving.Size = gsub("\\(.*\\)", "", Serving.Size)) %>%
+  filter(!is.na(Category) & !is.na(Item) & !is.na(Calories) & !is.na(Total.Fat))
+
+# Rename columns for better clarity
+colnames(fast_food_data) <- c("Category", "Item", "Serving.Size", "Calories", "Calories.from.Fat", 
+                              "Total.Fat", "Daily_Fat_Value", "Saturated.Fat", "Daily_Sat._Fat_Value", 
+                              "Trans.Fat", "Cholesterol", "Daily_Chol_Value", "Sodium", 
+                              "Daily_Sodium_Value", "Carbohydrates", "Daily_Carbohydrate_Value", 
+                              "Dietary_Fiber", "Daily_Dietary_Fiber", "Sugars", "Protein", 
+                              "Daily_Vitamin_A_value", "Daily_Vitamin_C_value", "Daily_Calcium_Value", 
+                              "Daily_Iron_Value")
+
+#Replace Column names that included _ with .
+colnames(fast_food_data) <- gsub("\\.", "_", colnames(fast_food_data))
+
+```
+***
+
+## Explore the data
+
+Nutritional Parameters:
+Carbohydrates, Protein, Sugar, Sodium, Trans Fat, Saturated Fat, Dietary Fiber
+
+As health-conscious individuals, we are concerned about the "Carbohydrates, Protein, Sugar, Sodium, Trans Fat, Saturated Fat, Dietary Fiber" content in fast food items. Let's visualize how menu items fare in terms of these nutrition content.
+
+***
+
+### Sodium contained in each category
+Determine the amount of Sodium in each category and see how much category is above 500mg of Sodium and how much is below 500mg
+
+```{r}
+fast_food_data$Sodium_Level <- ifelse(fast_food_data$Sodium > 500, "Above 500mg", "Below 500mg")
+
+# Create a bar plot with separate bars for sodium levels
+ggplot(fast_food_data, aes(x = Category, y = Sodium, fill = Sodium_Level)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Sodium Content Above/Below 500mg",
+       x = "Category",
+       y = "Sodium Content (mg)") +
+  scale_fill_manual(values = c("Above 500mg" = "red", "Below 500mg" = "blue")) +
+  theme_minimal() +
+  coord_flip()
+
+```
+
+***
+
+### Sugar Content Investigation
+Next, let's examine the sugar content in different menu categories:
+
+```{r}
+fast_food_data <- ggplot(fast_food_data, aes(Sugars)) + scale_fill_brewer(palette = "Spectral")
+
+fast_food_data + geom_histogram(aes(fill = Category),
+                   binwidth = 5,
+                   col = "black",
+                   size = 0.1) +
+  labs(title = "Histogram with Auto Binning",
+       subtitle = "Sugar Content across Food Categories",
+       x = "Sugar Content (mg)",
+       y = "Frequency")
+
+```
+
+***
+
+### Saturated Fat versus Trans Fat
+Since saturated fat and trans fat are indicated to be highly contained in fast food, we can investigate the correlation between them.
+```{r}
+# Load the dataset
+fast_food_data <- read.csv("/Users/hsupeiyin/Downloads/menu.csv", stringsAsFactors = FALSE, header = TRUE)
+
+# Remove non-numeric characters from specified columns
+fast_food_data <- fast_food_data %>%
+  mutate_at(vars(matches("Calories|Fat|Sodium|Carbohydrates|Dietary.Fiber|Sugars|Protein|Vitamin|Calcium|Iron")),
+            ~as.numeric(gsub("[^0-9.]", "", .))) %>%
+  mutate(Serving.Size = gsub("\\(.*\\)", "", Serving.Size)) %>%
+  filter(!is.na(Category) & !is.na(Item) & !is.na(Calories) & !is.na(Total.Fat))
+
+# Rename columns for better clarity
+colnames(fast_food_data) <- c("Category", "Item", "Serving.Size", "Calories", "Calories.from.Fat", 
+                              "Total.Fat", "Daily_Fat_Value", "Saturated.Fat", "Daily_Sat._Fat_Value", 
+                              "Trans.Fat", "Cholesterol", "Daily_Chol_Value", "Sodium", 
+                              "Daily_Sodium_Value", "Carbohydrates", "Daily_Carbohydrate_Value", 
+                              "Dietary_Fiber", "Daily_Dietary_Fiber", "Sugars", "Protein", 
+                              "Daily_Vitamin_A_value", "Daily_Vitamin_C_value", "Daily_Calcium_Value", 
+                              "Daily_Iron_Value")
+
+#Replace Column names that included _ with .
+colnames(fast_food_data) <- gsub("\\.", "_", colnames(fast_food_data))
+
+# Scatter plot with trend line
+ggplot(fast_food_data, aes(x = Trans_Fat, y = Saturated_Fat, color = Category)) +
+  geom_point(shape = 18, stroke = 1, alpha = 1) +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +  # Add trend line in red
+  labs(title = "Trans Fat vs. Saturated Fat Content Analysis",
+       x = "Trans Fat Content (mg)",
+       y = "Saturated Fat (mg)") +
+  theme_minimal() +
+  theme(legend.position = "right")  # Adjust the position of the legend
+
+
+
+
+```
+
+We can conclude that trans fat and saturated fat has a positive correlation between each other.
+
+***
+
+### Examine protein amount in "each category "breakfast"
+
+```{r}
+theme_set(theme_bw())
+
+# Filter the specified food categories
+selected_categories <- c("Breakfast")
+
+# Filter the data
+plot1 <- fast_food_data %>% filter(Category %in% selected_categories)
+
+# Create the lollipop chart
+ggplot(plot1, aes(x = Item, y = Protein, label = Protein)) +
+  geom_point(stat = 'identity', fill = "black", size = 5)  +
+  geom_segment(aes(y = 0, 
+                   x = Item, 
+                   yend = Protein, 
+                   xend = Item), 
+               color = "black") +
+  geom_text(color = "white", size = 2) +
+  labs(title = "Diverging Lollipop Chart", 
+       subtitle = "Protein Amount of Selected Food Categories",
+       x = "Food Item",
+       y = "Protein Amount (mg)") + 
+  coord_flip()
+
+
+```
+
+
+### Examine protein amount in the category "Salad"
+
+```{r}
+theme_set(theme_bw())
+
+# Filter the specified food categories
+selected_categories <- c("Salads")
+
+# Filter the data
+plot2 <- fast_food_data %>% filter(Category %in% selected_categories)
+
+# Create the lollipop chart
+ggplot(plot2, aes(x = Item, y = Protein, label = Protein)) +
+  geom_point(stat = 'identity', fill = "black", size = 5)  +
+  geom_segment(aes(y = 0, 
+                   x = Item, 
+                   yend = Protein, 
+                   xend = Item), 
+               color = "black") +
+  geom_text(color = "white", size = 2) +
+  labs(title = "Diverging Lollipop Chart", 
+       subtitle = "Protein Amount of Selected Food Categories",
+       x = "Food Item",
+       y = "Protein Amount (mg)") + 
+  coord_flip()
+```
+
+The protein contained in breakfast is 19.85714, and in salad is 19.83333. Surprisingly, protein contained in Salad is actually approximately 0.02 lesser than protein contained in breakfast. This result diverges to our hypothesis that the average protein content in the "Salads" category is higher than the average protein content in the "Breakfast" category.
+```{r}
+# Calculate the average protein for the "Salad" category
+average_protein_salad <- fast_food_data %>%
+  filter(Category == "Salads") %>%
+  summarise(Average_Protein = mean(Protein, na.rm = TRUE))
+
+# Calculate the average protein for the "Breakfast" category
+average_protein_breakfast <- fast_food_data %>%
+  filter(Category == "Breakfast") %>%
+  summarise(Average_Protein = mean(Protein, na.rm = TRUE))
+
+print(average_protein_salad)
+print(average_protein_breakfast)
+
+```
+***
+
+### Examine protein amount in the category "Beef & Pork"
+
+```{r}
+theme_set(theme_bw())
+
+# Filter the specified food categories
+selected_categories <- c("Beef & Pork")
+
+# Filter the data
+plot3 <- fast_food_data %>% filter(Category %in% selected_categories)
+
+# Create the lollipop chart
+ggplot(plot3, aes(x = Item, y = Protein, label = Protein)) +
+  geom_point(stat = 'identity', fill = "black", size = 5)  +
+  geom_segment(aes(y = 0, 
+                   x = Item, 
+                   yend = Protein, 
+                   xend = Item), 
+               color = "black") +
+  geom_text(color = "white", size = 2) +
+  labs(title = "Diverging Lollipop Chart", 
+       subtitle = "Protein Amount of Selected Food Categories",
+       x = "Food Item",
+       y = "Protein Amount (mg)") + 
+  coord_flip()
+```
+
+### Examine protein amount in the category "Chicken & Fish"
+
+```{r}
+theme_set(theme_bw())
+
+# Filter the specified food categories
+selected_categories <- c("Chicken & Fish")
+
+# Filter the data
+plot4 <- fast_food_data %>% filter(Category %in% selected_categories)
+
+# Create the lollipop chart
+ggplot(plot4, aes(x = Item, y = Protein, label = Protein)) +
+  geom_point(stat = 'identity', fill = "black", size = 5)  +
+  geom_segment(aes(y = 0, 
+                   x = Item, 
+                   yend = Protein, 
+                   xend = Item), 
+               color = "black") +
+  geom_text(color = "white", size = 2) +
+  labs(title = "Diverging Lollipop Chart", 
+       subtitle = "Protein Amount of Selected Food Categories",
+       x = "Food Item",
+       y = "Protein Amount (mg)") + 
+  coord_flip()
+
+```
+
+
+***
+
+### Dietary Fiber and Protein Comparison
+We also want to understand the relationship between dietary fiber and protein content:
+
+```{r}
+# Load the dataset
+fast_food_data <- read.csv("/Users/hsupeiyin/Downloads/menu.csv", stringsAsFactors = FALSE, header = TRUE)
+
+# Remove non-numeric characters from specified columns
+fast_food_data <- fast_food_data %>%
+  mutate_at(vars(matches("Calories|Fat|Sodium|Carbohydrates|Dietary.Fiber|Sugars|Protein|Vitamin|Calcium|Iron")),
+            ~as.numeric(gsub("[^0-9.]", "", .))) %>%
+  mutate(Serving.Size = gsub("\\(.*\\)", "", Serving.Size)) %>%
+  filter(!is.na(Category) & !is.na(Item) & !is.na(Calories) & !is.na(Total.Fat))
+
+# Rename columns for better clarity
+colnames(fast_food_data) <- c("Category", "Item", "Serving.Size", "Calories", "Calories.from.Fat", 
+                              "Total.Fat", "Daily_Fat_Value", "Saturated.Fat", "Daily_Sat._Fat_Value", 
+                              "Trans.Fat", "Cholesterol", "Daily_Chol_Value", "Sodium", 
+                              "Daily_Sodium_Value", "Carbohydrates", "Daily_Carbohydrate_Value", 
+                              "Dietary_Fiber", "Daily_Dietary_Fiber", "Sugars", "Protein", 
+                              "Daily_Vitamin_A_value", "Daily_Vitamin_C_value", "Daily_Calcium_Value", 
+                              "Daily_Iron_Value")
+
+#Replace Column names that included _ with .
+colnames(fast_food_data) <- gsub("\\.", "_", colnames(fast_food_data))
+
+fast_food_data %>%
+  ggplot(aes(x = Category, y = Dietary_Fiber, size = Protein, fill = Category, label = Item)) +
+  geom_point(shape = 21, color = "black", stroke = 0.3) +
+  labs(title = "Dietary Fiber Content Analysis",
+       x = "Dietary Fiber Content (mg)",
+       y = "Calories from Fat") +
+  scale_size_continuous(range = c(5, 15)) +
+  scale_fill_manual(values = c("#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22")) +  # Customize fill colors
+  theme_minimal() +
+  coord_flip()
+
+
+```
+
+```{r}
+library(dplyr)
+
+# Calculate the average dietary fiber for the "Snacks & Sides" category
+average_fiber_snacks <- fast_food_data %>%
+  filter(Category == "Snacks & Sides") %>%
+  summarise(average_fiber_snacks = mean(Dietary_Fiber, na.rm = TRUE))
+
+# Calculate the average dietary fiber for the "Chicken & Fish" category
+average_fiber_chicken <- fast_food_data %>%
+  filter(Category == "Chicken & Fish") %>%
+  summarise(average_fiber_chicken = mean(Dietary_Fiber, na.rm = TRUE))
+
+print(average_fiber_snacks)
+print(average_fiber_chicken)
+```
+
+The average dietary fiber for "Snacks & Slides" is 1.538462mg, "Chicken & Fish" is 2.925926mg. So the hypothesis that the average dietary fiber content in the "Snacks & Sides" category is higher than the average dietary fiber content in the "Chicken & Fish" category is false.
+
+***
+
+### Compare the "Total Calories" and "Total Fat" in each category
+
+```{r}
+ggplot(fast_food_data, aes(x = Calories, y = Category)) +
+  geom_dotplot(binaxis = "y", stackdir = "center", fill = "blue", color = "black") +
+  labs(title = "Calories Distribution in Fast Food Items", x = "Total Calories", y = "Category")
+
+```
+
+
+```{r}
+ggplot(fast_food_data, aes(x = Total_Fat, y = Category)) +
+  geom_dotplot(binaxis = "y", stackdir = "center", fill = "blue", color = "black") +
+  labs(title = "Fat Distribution in Fast Food Items", x = "Total Fat (mg)", y = "Category")
+```
+
+
+```{r}
+# Load the dataset
+fast_food_data <- read.csv("/Users/hsupeiyin/Downloads/menu.csv", stringsAsFactors = FALSE, header = TRUE)
+
+# Remove non-numeric characters from specified columns
+fast_food_data <- fast_food_data %>%
+  mutate_at(vars(matches("Calories|Fat|Sodium|Carbohydrates|Dietary.Fiber|Sugars|Protein|Vitamin|Calcium|Iron")),
+            ~as.numeric(gsub("[^0-9.]", "", .))) %>%
+  mutate(Serving.Size = gsub("\\(.*\\)", "", Serving.Size)) %>%
+  filter(!is.na(Category) & !is.na(Item) & !is.na(Calories) & !is.na(Total.Fat))
+
+# Rename columns for better clarity
+colnames(fast_food_data) <- c("Category", "Item", "Serving.Size", "Calories", "Calories.from.Fat", 
+                              "Total.Fat", "Daily_Fat_Value", "Saturated.Fat", "Daily_Sat._Fat_Value", 
+                              "Trans.Fat", "Cholesterol", "Daily_Chol_Value", "Sodium", 
+                              "Daily_Sodium_Value", "Carbohydrates", "Daily_Carbohydrate_Value", 
+                              "Dietary_Fiber", "Daily_Dietary_Fiber", "Sugars", "Protein", 
+                              "Daily_Vitamin_A_value", "Daily_Vitamin_C_value", "Daily_Calcium_Value", 
+                              "Daily_Iron_Value")
+
+#Replace Column names that included _ with .
+colnames(fast_food_data) <- gsub("\\.", "_", colnames(fast_food_data))
+
+# Scatter plot with trend line
+ggplot(fast_food_data, aes(x = Trans_Fat, y = Protein, color = Category)) +
+  geom_point(shape = 18, stroke = 1, alpha = 1) +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +  # Add trend line in red
+  labs(title = "Trans Fat Content Analysis",
+       x = "Trans Fat Content (mg)",
+       y = "Protein (mg)") +
+  theme_minimal() +
+  theme(legend.position = "right")  # Adjust the position of the legend
+
+
+```
+
+Next, seeing from the graph, we can confirm that it is true that our hypothesis states that there is a negative correlation between the amount of trans fat and the amount of protein in menu items.
+
+***
+
+### Average calories below and above mean of the avg calories in each categories.
+```{r}
+# Create a data frame with the average calories and food categories
+average_calories_by_category <- data.frame(
+  Category = c("Beef & Pork", "Beverages", "Breakfast", "Chicken & Fish",
+               "Coffee & Tea", "Desserts", "Salads", "Smoothies & Shakes", "Snacks & Sides"),
+  Average_Calories = c(494.0000, 113.7037, 526.6667, 552.9630, 283.8947,
+                       222.1429, 270.0000, 531.4286, 245.7692)
+)
+
+# Create the diverging bar plot
+ggplot(average_calories_by_category, aes(x = reorder(Category, Average_Calories), y = Average_Calories, fill = ifelse(Average_Calories > mean(Average_Calories), "Above Avg", "Below Avg"))) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("Below Avg" = "blue", "Above Avg" = "red")) +
+  labs(title = "Average Calories Above/Below Average",
+       x = "Food Category",
+       y = "Average Calories") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size = 14)) 
+
+```
+
+***
+
+### Determine if there's a positive correlation between calories and total fat 
+
+```{r}
+# Create a scatter plot with filled circles to represent area
+ggplot(fast_food_data, aes(x = Total_Fat, y = Calories, fill = Total_Fat)) +
+  geom_point(shape = 21, size = sqrt(fast_food_data$Total_Fat), color = "black") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Correlation Between Total Fat and Calories",
+       x = "Total Fat (mg)",
+       y = "Calories",
+       fill = "Total Fat") +
+  theme_minimal()
+
+
+```
+
+From the graph, we can confirm that it is true that our hypothesis states that there is a positive correlation between the total fat content and the calorie count of menu items.
+
+***
+
+### Menu items with higher calorie content have a higher percentage of calories from fat
+From the graph, we can conclude that our hypothesis that menu items with higher calorie content have a higher percentage of calories from fat might not be true.
+```{r}
+# Calculate the percentage of calories from fat
+fast_food_data <- fast_food_data %>%
+  mutate(Percentage_Calories_from_Fat = (Calories_from_Fat / Calories) * 100)
+
+# Create a custom color gradient
+color_gradient <- scale_fill_gradient(
+  low = "blue",      # Lowest color of the gradient
+  high = "yellow"      # Highest color of the gradient
+)
+
+# Create a heatmap with color gradient
+heatmap_plot <- ggplot(fast_food_data, aes(x = Percentage_Calories_from_Fat, y = Calories)) +
+  geom_bin2d(bins = 10) +
+  color_gradient +  # Apply the custom color gradient
+  labs(
+    title = "Percentage of calories included in calorie content",
+    x = "Percentage_Calories_from_Fat",
+    y = "Calories"
+  ) +
+  theme_minimal() +
+  coord_flip()
+
+heatmap_plot
+
+```
+
+***
+
+### Examine the carbohydrates amount in liquid drinks categories: "Beverages", "Coffee & Tea", "Smoothies & Shakes"
+
+```{r}
+
+# Create a dot plot
+ggplot(fast_food_data %>% filter(Category %in% c("Beverages", "Coffee & Tea", "Smoothies & Shakes")), 
+       aes(x = Category, y = Carbohydrates)) +
+  geom_point(aes(col = Category), size = 3) +   # Draw points
+  geom_segment(aes(x = Category, 
+                   xend = Category, 
+                   y = min(Carbohydrates), 
+                   yend = max(Carbohydrates)), 
+               linetype = "dashed", 
+               size = 0.1) +   # Draw dashed lines
+  labs(title = "Dot Plot", 
+       subtitle = "Beverages vs. Sandwiches vs.Smmoothies & Shakes: Carbohydrates Comparison", 
+       caption = "source: fast_food_data") +  
+  coord_flip()
+
+```
+
+
+```{r}
+# Calculate the average carbs for the "Snacks & Sides" category
+average_carb_breakfast <- fast_food_data %>%
+  filter(Category == "Breakfast") %>%
+  summarise(average_carb_breakfast = mean(Carbohydrates, na.rm = TRUE))
+
+# Calculate the average carbs for the "Chicken & Fish" category
+average_carb_chicken <- fast_food_data %>%
+  filter(Category == "Chicken & Fish") %>%
+  summarise(average_carb_chicken = mean(Carbohydrates, na.rm = TRUE))
+
+print(average_carb_breakfast)
+print(average_carb_chicken)
+
+```
+The carbs in breakfast is 49.7619mg	, in chicken is 49.07407mg. There is only a difference of 0.7mg of carbs between breakfast and chicken & fish, so we can conclude the hypothesis that there is no significant difference in the average carbohydrate content between the "Breakfast" and "Chicken & Fish" categories.
+
+
+***
+
+
+## Conclusion
+
+Through this analysis, we gained insights into the nutritional aspects of fast food items, including their sodium, trans fat, sugar, dietary fiber, and protein content. These insights can help consumers make informed choices when selecting menu items that align with their dietary preferences and health goals.
+
+Through a comprehensive exploration of data and an array of insightful visualizations, the report sheds light on key aspects of fast food nutrition, including sodium, trans fat, sugar, dietary fiber, protein, and calorie distribution.
+
+The analysis reveals noteworthy trends, such as the correlation between calories and total fat, the variation in protein content across different food categories, and the impact of carbohydrate content in liquid drink categories. These findings empower consumers to make informed choices aligned with their dietary preferences and health goals.
+
+The analysis covers various categories such as sodium, trans fat, sugar, dietary fiber, and protein content, with the aim of providing insights into the nutritional composition of these menu items. The report utilizes data visualization techniques, including scatter plots, histograms, lollipop charts, and box plots, to highlight key findings and trends.
+
+The analysis begins by introducing the background and significance of understanding fast food nutrition in the context of modern dietary habits. It emphasizes the need to comprehend the nutritional aspects of fast-food offerings due to their impact on health and overall dietary patterns. The report then delves into the data exploration process, which involves importing and cleaning the dataset, as well as reorganizing column names for clarity.
+
+***
+
+## Summary
+The analysis covers various categories such as sodium, trans fat, sugar, dietary fiber, and protein content, with the aim of providing insights into the nutritional composition of these menu items. The report utilizes data visualization techniques, including scatter plots, histograms, lollipop charts, and box plots, to highlight key findings and trends.
+
+The analysis begins by introducing the background and significance of understanding fast food nutrition in the context of modern dietary habits. It emphasizes the need to comprehend the nutritional aspects of fast-food offerings due to their impact on health and overall dietary patterns. The report then delves into the data exploration process, which involves importing and cleaning the dataset, as well as reorganizing column names for clarity.
+
+The report showcases various visualizations and analyses performed on the dataset, including:
+
+Analysis of sodium and trans fat content across different menu items using diverging bar charts and scatter plots.Investigation of sugar content in different food categories through histograms.
+
+Examination of the relationship between trans fat and saturated fat content using scatter plots.
+
+Comparison of protein content in different food categories using lollipop charts.
+
+Exploration of the relationship between dietary fiber, protein, and sugar content using scatter plots.
+
+Comparison of total calories and total fat in each food category using dot plots.
+
+Analysis of the percentage of calories from fat in menu items through a heatmap.
+
+Detailed exploration of carbohydrate content in the "Beverages," "Coffee & Tea," and "Smoothies & Shakes" categories using a dot plot.
+
+The report concludes by summarizing the key insights gained from the analysis and highlighting the importance of understanding nutritional content in making informed food choices. It acknowledges the dynamic nature of the fast-food industry and suggests that ongoing analysis of nutritional data can contribute to promoting healthier eating habits.
+
+
+
+***
+
+## Future Direction
+While the report provides a comprehensive analysis of fast food nutrition, there are several potential avenues for further research and exploration:
+
+1.Long-Term Trends: Conduct an analysis of long-term trends in fast food nutrition to observe changes in nutritional content over time. This could involve comparing data from different years or decades to identify shifts in dietary patterns and industry practices.
+
+2.Geographical Variation: Explore variations in fast food nutrition across different geographical regions or countries. Investigate whether there are significant differences in nutritional content based on cultural preferences and local regulations.
+
+3.Consumer Perception: Study consumer perceptions and attitudes towards fast food nutrition. Analyze survey data or conduct interviews to understand how individuals make food choices and whether nutritional information impacts their decisions.
+
+4.Menu Labeling Impact: Examine the impact of menu labeling regulations on consumer choices and the nutritional composition of fast food items. Investigate whether mandatory calorie labeling, for example, influences the formulation of menu offerings.
+
+5.Health Outcomes: Investigate potential correlations between fast food nutrition and health outcomes, such as obesity rates, cardiovascular health, and diabetes prevalence. This could involve analyzing larger datasets that include health-related metrics.
+
+6.Ingredient Transparency: Analyze the transparency of ingredient lists in fast food items. Determine whether consumers have access to comprehensive ingredient information and how this information influences their choices.
+
+7.Menu Reformulation: Monitor changes in menu offerings and formulations made by fast-food chains in response to evolving nutritional guidelines and consumer preferences.
+
+8.Comparative Analysis: Conduct a comparative analysis of fast food nutrition with other types of dining options, such as sit-down restaurants or home-cooked meals, to provide a broader context for understanding nutritional choices.
+
+9.Nutritional Education: Investigate the effectiveness of nutritional education campaigns and their impact on consumer behavior and fast food consumption patterns.
+
+10.Emerging Nutritional Trends: Explore emerging nutritional trends, such as plant-based or sustainable food options, and analyze their influence on fast food menu compositions.
+
+Incorporating these future directions into ongoing research efforts could provide valuable insights into the evolving landscape of fast food nutrition and its broader implications for public health and dietary choices.
+
+***
+
+## Citations
+
+Eagan, James. “Project Datasets.” Project Datasets - James Eagan, perso.telecom-paristech.fr/eagan/class/igr204/datasets. Accessed 13 Aug. 2023. 
+
+StatLib---1993 Graphics Exposition. (n.d.). Lib.stat.cmu.edu. 
+http://lib.stat.cmu.edu/datasets/1993.expo/
+
+Huzar, T. (2021, December 17). Fast food effects: Short-term, long-term, physical, mental, and more. Www.medicalnewstoday.com. https://www.medicalnewstoday.com/articles/324847#short-term-impacts
+
+‌
+
+***
+
+## THANK YOU
